@@ -1,0 +1,12 @@
+<use name="CondFormats/DataRecord" />
+<use name="CondFormats/RPCObjects" />
+<use name="DataFormats/GeometryVector" />
+<use name="DataFormats/MuonDetId" />
+<use name="FWCore/Framework" />
+<use name="FWCore/MessageLogger" />
+<use name="FWCore/ParameterSet" />
+<use name="Geometry/CSCGeometry" />
+<use name="Geometry/RPCGeometry" />
+<use name="Geometry/Records" />
+
+<flags EDM_PLUGIN="1" />
