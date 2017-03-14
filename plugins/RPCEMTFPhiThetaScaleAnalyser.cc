@@ -11,15 +11,8 @@
 #include "FWCore/ParameterSet/interface/ConfigurationDescriptions.h"
 #include "FWCore/ParameterSet/interface/ParameterSetDescription.h"
 
-#include "DataFormats/MuonDetId/interface/CSCDetId.h"
 #include "DataFormats/MuonDetId/interface/RPCDetId.h"
 
-#include "Geometry/CSCGeometry/interface/CSCChamber.h"
-#include "Geometry/CSCGeometry/interface/CSCChamberSpecs.h"
-#include "Geometry/CSCGeometry/interface/CSCGeometry.h"
-#include "Geometry/CSCGeometry/interface/CSCLayer.h"
-#include "Geometry/CSCGeometry/interface/CSCLayerGeometry.h"
-#include "Geometry/CSCGeometry/interface/CSCStripTopology.h"
 #include "Geometry/RPCGeometry/interface/RPCGeometry.h"
 #include "Geometry/RPCGeometry/interface/RPCRoll.h"
 #include "Geometry/Records/interface/MuonGeometryRecord.h"
@@ -46,8 +39,7 @@
 /*
   Assumptions:
   - Endcap sectors connected for trigger-sectors (1, 2, ..., 6) are (2..8, 8..14, ..., 32..2)
-  - Reference chambers CSC are (Station=2, Ring=1, Sector=1, 4, ..., 16)
-  - Reference phi = center of strip at lowest phi within Reference chamber, layer 3, minus 2 degrees
+  - Reference phi in degrees = 15 + (trigger-sector - 1) * 60 - 22
   - Theta is measured from beampipe in the respective region, minus 8.5 degrees (from 8.5 to 45, 5 bit)
 */
 
@@ -74,9 +66,6 @@ void RPCEMTFPhiThetaScaleAnalyser::analyze(edm::Event const &, edm::EventSetup c
     _setup.get<MuonGeometryRecord>().get(_es_rpc_geom);
     std::vector<RPCRoll const *> const & _rpc_rolls(_es_rpc_geom->rolls());
 
-    edm::ESHandle<CSCGeometry> _es_csc_geom;
-    _setup.get<MuonGeometryRecord>().get(_es_csc_geom);
-
     // Prepare ofstreams, one per CPPF
     std::map<RPCAMCLink, std::shared_ptr<std::ofstream> > _cppf_ofstream;
     {
@@ -100,24 +89,11 @@ void RPCEMTFPhiThetaScaleAnalyser::analyze(edm::Event const &, edm::EventSetup c
     for (int _region = -1 ; _region <= 1 ; _region += 2) {
         for (int _trigger_sector = 1 ; _trigger_sector <= 6 ; ++_trigger_sector) {
             edm::LogWarning("RPCEMTFPhiThetaScaleAnalyser") << "Handling EMTF_" << (_region < 0 ? 'n' : 'p') << _trigger_sector;
-            Geom::Phi<float> _phi_ref(0);
-            { // Get Reference Phi in CSC Chamber (Region Station=2, Ring=1, Sector=1, 4, ..., 16)
-                CSCDetId _csc_ref_id(_region > 0 ? 1 : 2, 2, 1, (_trigger_sector - 1) * 3 + 1);
-                CSCChamber const & _csc_ref(*(_es_csc_geom->chamber(_csc_ref_id)));
-                // First strip along phi - 2 degrees
-                unsigned int _n_strips(_csc_ref.layer(3)->geometry()->numberOfStrips());
-                GlobalPoint _strip_1_gp(_csc_ref.layer(3)->centerOfStrip(1));
-                GlobalPoint _strip_n_gp(_csc_ref.layer(3)->centerOfStrip(_n_strips));
-                if (_strip_1_gp.phi() - _strip_n_gp.phi() < 0) {
-                    _phi_ref = _strip_1_gp.phi();
-                } else {
-                    _phi_ref = _strip_n_gp.phi();
-                }
-                _phi_ref -= 2. / 180. * Geom::pi();
-                edm::LogWarning("RPCEMTFPhiThetaScaleAnalyser") << "Reference phi: " << _phi_ref
-                                                                << " (" << (float)(_phi_ref) * 180. / Geom::pi() << " degrees"
-                                                                << ", " << int((float)(_phi_ref) * 180. / Geom::pi() * 15. + (_phi_ref < 0. ? -.5 : .5)) << " units)";
-            }
+
+            Geom::Phi<float> _phi_ref((15. + (float)(_trigger_sector - 1) * 60. - 22.) / 180. * Geom::pi());
+            edm::LogWarning("RPCEMTFPhiThetaScaleAnalyser") << "Reference phi: " << _phi_ref
+                                                            << " (" << (float)(_phi_ref) * 180. / Geom::pi() << " degrees"
+                                                            << ", " << int((float)(_phi_ref) * 180. / Geom::pi() * 15. + (_phi_ref < 0. ? -.5 : .5)) << " units)";
 
             // Here I should have the Mappings for CPPF/EMTF to check which links are in use, but since that's not there (yet)
             // use all links in endcap_sector (2..8, 8..14, ..., 32..2), excluding the last endcap_sector

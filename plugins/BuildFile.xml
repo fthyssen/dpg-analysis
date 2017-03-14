@@ -5,7 +5,6 @@
 <use name="FWCore/Framework" />
 <use name="FWCore/MessageLogger" />
 <use name="FWCore/ParameterSet" />
-<use name="Geometry/CSCGeometry" />
 <use name="Geometry/RPCGeometry" />
 <use name="Geometry/Records" />
 
