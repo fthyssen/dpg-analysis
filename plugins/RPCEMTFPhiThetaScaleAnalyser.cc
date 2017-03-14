@@ -49,7 +49,6 @@
   - Reference chambers CSC are (Station=2, Ring=1, Sector=1, 4, ..., 16)
   - Reference phi = center of strip at lowest phi within Reference chamber, layer 3, minus 2 degrees
   - Theta is measured from beampipe in the respective region, minus 8.5 degrees (from 8.5 to 45, 5 bit)
-  - No need for halfChannels that aren't between neighbouring strips
 */
 
 RPCEMTFPhiThetaScaleAnalyser::RPCEMTFPhiThetaScaleAnalyser(edm::ParameterSet const & _config)
@@ -188,17 +187,19 @@ void RPCEMTFPhiThetaScaleAnalyser::analyze(edm::Event const &, edm::EventSetup c
                                                     << std::endl;
                     }
 
-                    if (_strip + _slope < 1 || _strip + _slope > _n_strips) {
+                    if (_channel * 2 + 1 > 190) {
                         continue;
                     }
 
-                    _strip_gp = _rpc_roll.toGlobal(_rpc_roll.centreOfStrip((float)(_strip + (_slope > 0 ? 0 : -1)))); // float strip .5 = int strip 1
-                    _phi = (float)(_strip_gp.phi() - _phi_ref) * 180. / Geom::pi() * 15.
-                        + .5; // rounding
-                    _theta = (_region == -1 ? 180. * 32. / 36.5 : 0.)
-                        + (float)(_region) * (float)(_strip_gp.theta()) * 180. / Geom::pi() * 32. / 36.5
-                        - 8.5 * 32. / 36.5 // offset
-                        + .5; // rounding
+                    if (_strip + _slope >= 1 && _strip + _slope <= _n_strips) {
+                        _strip_gp = _rpc_roll.toGlobal(_rpc_roll.centreOfStrip((float)(_strip + (_slope > 0 ? 0 : -1)))); // float strip .5 = int strip 1
+                        _phi = (float)(_strip_gp.phi() - _phi_ref) * 180. / Geom::pi() * 15.
+                            + .5; // rounding
+                        _theta = (_region == -1 ? 180. * 32. / 36.5 : 0.)
+                            + (float)(_region) * (float)(_strip_gp.theta()) * 180. / Geom::pi() * 32. / 36.5
+                            - 8.5 * 32. / 36.5 // offset
+                            + .5; // rounding
+                    }
 
                     for (RPCInverseAMCLinkMap::map_type::const_iterator _cppf_input = _cppf_input_range.first
                              ;_cppf_input != _cppf_input_range.second ; ++_cppf_input) {
