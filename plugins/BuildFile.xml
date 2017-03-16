@@ -1,3 +1,5 @@
+<use name="clhep" />
+
 <use name="CommonTools/UtilAlgos" />
 <use name="DPGAnalysis/RPC" />
 <use name="DPGAnalysis/Tools" />

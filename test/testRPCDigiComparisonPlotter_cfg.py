@@ -48,6 +48,30 @@ process.RPCDigiComparisonRollPlotterPacked = process.RPCDigiComparisonPlotterPac
 process.RPCDigiComparisonRollPlotterPacked.rpcDigiComparisonAnalyser = cms.string('RPCDigiComparisonRollAnalyserPacked')
 process.RPCDigiComparisonRollPlotterPacked.pdfOutput = cms.string('RPCDigiComparisonRollAnalyserPacked')
 
+process.RPCDigiComparisonPlotterPackedEOD = process.RPCDigiComparisonPlotter.clone()
+process.RPCDigiComparisonPlotterPackedEOD.rpcDigiComparisonAnalyser = cms.string('RPCDigiComparisonAnalyserPackedEOD')
+process.RPCDigiComparisonPlotterPackedEOD.pdfOutput = cms.string('RPCDigiComparisonAnalyserPackedEOD')
+
+process.RPCDigiComparisonRollPlotterPackedEOD = process.RPCDigiComparisonPlotterPackedEOD.clone()
+process.RPCDigiComparisonRollPlotterPackedEOD.rpcDigiComparisonAnalyser = cms.string('RPCDigiComparisonRollAnalyserPackedEOD')
+process.RPCDigiComparisonRollPlotterPackedEOD.pdfOutput = cms.string('RPCDigiComparisonRollAnalyserPackedEOD')
+
+process.RPCDigiComparisonPlotterRandom = process.RPCDigiComparisonPlotter.clone()
+process.RPCDigiComparisonPlotterRandom.rpcDigiComparisonAnalyser = cms.string('RPCDigiComparisonAnalyserRandom')
+process.RPCDigiComparisonPlotterRandom.pdfOutput = cms.string('RPCDigiComparisonAnalyserRandom')
+
+process.RPCDigiComparisonRollPlotterRandom = process.RPCDigiComparisonPlotterRandom.clone()
+process.RPCDigiComparisonRollPlotterRandom.rpcDigiComparisonAnalyser = cms.string('RPCDigiComparisonRollAnalyserRandom')
+process.RPCDigiComparisonRollPlotterRandom.pdfOutput = cms.string('RPCDigiComparisonRollAnalyserRandom')
+
+process.RPCDigiComparisonPlotterRandomEOD = process.RPCDigiComparisonPlotter.clone()
+process.RPCDigiComparisonPlotterRandomEOD.rpcDigiComparisonAnalyser = cms.string('RPCDigiComparisonAnalyserRandomEOD')
+process.RPCDigiComparisonPlotterRandomEOD.pdfOutput = cms.string('RPCDigiComparisonAnalyserRandomEOD')
+
+process.RPCDigiComparisonRollPlotterRandomEOD = process.RPCDigiComparisonPlotterRandomEOD.clone()
+process.RPCDigiComparisonRollPlotterRandomEOD.rpcDigiComparisonAnalyser = cms.string('RPCDigiComparisonRollAnalyserRandomEOD')
+process.RPCDigiComparisonRollPlotterRandomEOD.pdfOutput = cms.string('RPCDigiComparisonRollAnalyserRandomEOD')
+
 process.load("DPGAnalysis.RPC.RPCAMCLinkCountersPlotter_cfi")
 process.RPCAMCLinkCountersPlotter.createPDF = cms.bool(True)
 process.RPCAMCLinkCountersPlotter.setLogz = cms.bool(True)
@@ -56,6 +80,18 @@ process.RPCAMCLinkCountersPlotter.useDivergingPalette = cms.bool(True)
 process.RPCAMCLinkCountersPlotterPacked = process.RPCAMCLinkCountersPlotter.clone()
 process.RPCAMCLinkCountersPlotterPacked.rpcAMCLinkCountersAnalyser = cms.string('RPCAMCLinkCountersAnalyserPacked')
 process.RPCAMCLinkCountersPlotterPacked.pdfOutput = cms.string('RPCAMCLinkCountersAnalyserPacked')
+
+process.RPCAMCLinkCountersPlotterPackedEOD = process.RPCAMCLinkCountersPlotter.clone()
+process.RPCAMCLinkCountersPlotterPackedEOD.rpcAMCLinkCountersAnalyser = cms.string('RPCAMCLinkCountersAnalyserPackedEOD')
+process.RPCAMCLinkCountersPlotterPackedEOD.pdfOutput = cms.string('RPCAMCLinkCountersAnalyserPackedEOD')
+
+process.RPCAMCLinkCountersPlotterRandom = process.RPCAMCLinkCountersPlotter.clone()
+process.RPCAMCLinkCountersPlotterRandom.rpcAMCLinkCountersAnalyser = cms.string('RPCAMCLinkCountersAnalyserRandom')
+process.RPCAMCLinkCountersPlotterRandom.pdfOutput = cms.string('RPCAMCLinkCountersAnalyserRandom')
+
+process.RPCAMCLinkCountersPlotterRandomEOD = process.RPCAMCLinkCountersPlotter.clone()
+process.RPCAMCLinkCountersPlotterRandomEOD.rpcAMCLinkCountersAnalyser = cms.string('RPCAMCLinkCountersAnalyserRandomEOD')
+process.RPCAMCLinkCountersPlotterRandomEOD.pdfOutput = cms.string('RPCAMCLinkCountersAnalyserRandomEOD')
 
 process.options = cms.untracked.PSet( wantSummary = cms.untracked.bool(True) )
 
@@ -70,7 +106,16 @@ process.TFileService = cms.Service("TFileService", fileName = cms.string("testRP
 process.p = cms.Path(#process.RPCDigiComparisonPlotter
                      #* process.RPCDigiComparisonRollPlotter
                      #* process.RPCAMCLinkCountersPlotter
-                     process.RPCDigiComparisonPlotterPacked
-                     * process.RPCDigiComparisonRollPlotterPacked
-                     * process.RPCAMCLinkCountersPlotterPacked
+                     #process.RPCDigiComparisonPlotterPacked
+                     #* process.RPCDigiComparisonRollPlotterPacked
+                     #* process.RPCAMCLinkCountersPlotterPacked
+                     process.RPCDigiComparisonPlotterPackedEOD
+                     * process.RPCDigiComparisonRollPlotterPackedEOD
+                     * process.RPCAMCLinkCountersPlotterPackedEOD
+                     #process.RPCDigiComparisonPlotterRandom
+                     #* process.RPCDigiComparisonRollPlotterRandom
+                     #* process.RPCAMCLinkCountersPlotterRandom
+                     #process.RPCDigiComparisonPlotterRandomEOD
+                     #* process.RPCDigiComparisonRollPlotterRandomEOD
+                     #* process.RPCAMCLinkCountersPlotterRandomEOD
 )
