@@ -2,29 +2,24 @@
 
 #include <algorithm>
 
-#include "TROOT.h"
-
-DivergingPalette::DivergingPalette(int _offset, bool _inverted)
+DivergingPalette::DivergingPalette(bool _reverse)
 {
-    if (_offset == 0)
-        _offset = ROOT::GetROOT()->GetListOfColors()->GetSize();
-
     colors_.reserve(9);
-    colors_.push_back(new TColor(_offset+0, 49./255., 54./255., 149./255.));
-    colors_.push_back(new TColor(_offset+1, 69./255., 117./255., 180./255.));
-    colors_.push_back(new TColor(_offset+2, 116./255., 173./255., 209./255.));
-    colors_.push_back(new TColor(_offset+3, 171./255., 217./255., 233./255.));
-    colors_.push_back(new TColor(_offset+4, 254./255., 224./255., 144./255.));
-    colors_.push_back(new TColor(_offset+5, 253./255., 174./255., 97./255.));
-    colors_.push_back(new TColor(_offset+6, 244./255., 109./255., 67./255.));
-    colors_.push_back(new TColor(_offset+7, 215./255., 48./255., 39./255.));
-    colors_.push_back(new TColor(_offset+8, 165./255., 0./255., 38./255.));
+    colors_.push_back(new TColor(49./255., 54./255., 149./255.));
+    colors_.push_back(new TColor(69./255., 117./255., 180./255.));
+    colors_.push_back(new TColor(116./255., 173./255., 209./255.));
+    colors_.push_back(new TColor(171./255., 217./255., 233./255.));
+    colors_.push_back(new TColor(254./255., 224./255., 144./255.));
+    colors_.push_back(new TColor(253./255., 174./255., 97./255.));
+    colors_.push_back(new TColor(244./255., 109./255., 67./255.));
+    colors_.push_back(new TColor(215./255., 48./255., 39./255.));
+    colors_.push_back(new TColor(165./255., 0./255., 38./255.));
 
     palette_.reserve(colors_.size());
     for (std::vector<TColor *>::const_iterator _color = colors_.begin()
              ; _color != colors_.end() ; ++_color)
         palette_.push_back((*_color)->GetNumber());
-    if (_inverted)
+    if (_reverse)
         std::reverse(palette_.begin(), palette_.end());
 }
 

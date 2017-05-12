@@ -10,7 +10,7 @@
 class SequentialPalette
 {
 public:
-    SequentialPalette(int _offset = 0, bool _inverted = false);
+    SequentialPalette(bool _reverse = false);
     ~SequentialPalette();
 
     std::vector<TColor *> const & getColors() const;

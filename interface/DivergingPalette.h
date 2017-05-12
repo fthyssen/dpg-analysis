@@ -10,7 +10,7 @@
 class DivergingPalette
 {
 public:
-    DivergingPalette(int _offset = 0, bool _inverted = false);
+    DivergingPalette(bool _reverse = false);
     ~DivergingPalette();
 
     std::vector<TColor *> const & getColors() const;
