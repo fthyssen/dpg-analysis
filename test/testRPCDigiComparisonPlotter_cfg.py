@@ -29,7 +29,8 @@ process.load("FWCore.MessageService.MessageLogger_cfi")
 process.MessageLogger.cerr.FwkReport.reportEvery = 1000
 
 process.load("Configuration.StandardSequences.FrontierConditions_GlobalTag_cff")
-process.GlobalTag.globaltag = "80X_dataRun2_Express_v10"
+# https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideFrontierConditions#Express_reconstruction_Global_Ta
+process.GlobalTag.globaltag = "90X_dataRun2_Express_v4"
 
 process.load("DPGAnalysis.RPC.RPCDigiComparisonPlotter_cfi")
 process.RPCDigiComparisonPlotter.createPDF = cms.bool(True)
@@ -103,19 +104,19 @@ process.source = cms.Source("PoolSource"
 
 process.TFileService = cms.Service("TFileService", fileName = cms.string("testRPCDigiComparisonPlotter.root") )
 
-process.p = cms.Path(#process.RPCDigiComparisonPlotter
+process.p = cms.Path(process.RPCDigiComparisonPlotter
                      #* process.RPCDigiComparisonRollPlotter
-                     #* process.RPCAMCLinkCountersPlotter
-                     #process.RPCDigiComparisonPlotterPacked
+                     * process.RPCAMCLinkCountersPlotter
+                     * process.RPCDigiComparisonPlotterPacked
                      #* process.RPCDigiComparisonRollPlotterPacked
-                     #* process.RPCAMCLinkCountersPlotterPacked
-                     process.RPCDigiComparisonPlotterPackedEOD
-                     * process.RPCDigiComparisonRollPlotterPackedEOD
+                     * process.RPCAMCLinkCountersPlotterPacked
+                     * process.RPCDigiComparisonPlotterPackedEOD
+                     #* process.RPCDigiComparisonRollPlotterPackedEOD
                      * process.RPCAMCLinkCountersPlotterPackedEOD
-                     #process.RPCDigiComparisonPlotterRandom
+                     * process.RPCDigiComparisonPlotterRandom
                      #* process.RPCDigiComparisonRollPlotterRandom
-                     #* process.RPCAMCLinkCountersPlotterRandom
-                     #process.RPCDigiComparisonPlotterRandomEOD
+                     * process.RPCAMCLinkCountersPlotterRandom
+                     * process.RPCDigiComparisonPlotterRandomEOD
                      #* process.RPCDigiComparisonRollPlotterRandomEOD
-                     #* process.RPCAMCLinkCountersPlotterRandomEOD
+                     * process.RPCAMCLinkCountersPlotterRandomEOD
 )

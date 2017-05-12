@@ -41,17 +41,17 @@ process.MessageLogger.cerr.FwkReport.reportEvery = 1000
 #     )
 # )
 
+# FrontierConditions
 process.load("Configuration.StandardSequences.FrontierConditions_GlobalTag_cff")
-process.GlobalTag.globaltag = "80X_dataRun2_Express_v15"
+# https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideFrontierConditions#Express_reconstruction_Global_Ta
+process.GlobalTag.globaltag = "90X_dataRun2_Express_v4"
 
+# Drop all event content
 process.load("DPGAnalysis.Tools.EventFilter_cfi")
 
+# Unpack + pack + unpack
 process.load("EventFilter.RPCRawToDigi.RPCTwinMuxRawToDigi_sqlite_cff")
-process.load("EventFilter.RPCRawToDigi.rpcPacker_cfi")
-process.rpcpacker.InputLabel = cms.InputTag("RPCTwinMuxRawToDigi")
 process.load("EventFilter.RPCRawToDigi.rpcUnpackingModule_cfi")
-process.rpcUnpackingModulePacked = process.rpcUnpackingModule.clone()
-process.rpcUnpackingModulePacked.InputLabel = cms.InputTag("rpcpacker")
 process.load("EventFilter.RPCRawToDigi.RPCTwinMuxDigiToRaw_sqlite_cff")
 process.load("CondTools.RPC.RPCLinkMap_sqlite_cff")
 process.RPCTwinMuxRawToDigi.bxMin = cms.int32(-2)
@@ -59,17 +59,18 @@ process.RPCTwinMuxRawToDigi.bxMax = cms.int32(2)
 process.RPCTwinMuxRawToDigi.calculateCRC = cms.bool(True)
 
 process.RPCTwinMuxDigiToRaw.inputTag = cms.InputTag("RPCTwinMuxRawToDigi")
-#process.RPCTwinMuxDigiToRaw.inputTag = cms.InputTag("rpcUnpackingModule")
 process.RPCTwinMuxDigiToRaw.bxMin = cms.int32(-2)
 process.RPCTwinMuxDigiToRaw.bxMax = cms.int32(2)
 
 process.RPCTwinMuxRawToDigiPacked = process.RPCTwinMuxRawToDigi.clone()
 process.RPCTwinMuxRawToDigiPacked.inputTag = cms.InputTag("RPCTwinMuxDigiToRaw")
 
-process.load("EventFilter.L1TXRawToDigi.twinMuxStage2Digis_cfi")
-process.twinMuxStage2DigisPacked = process.twinMuxStage2Digis.clone()
-process.twinMuxStage2DigisPacked.DTTM7_FED_Source = cms.InputTag("RPCTwinMuxDigiToRaw")
+# Link Counters
+process.load("DPGAnalysis.RPC.RPCAMCLinkCountersAnalyser_cff")
+process.RPCAMCLinkCountersAnalyserPacked = process.RPCAMCLinkCountersAnalyser.clone()
+process.RPCAMCLinkCountersAnalyserPacked.RPCAMCLinkCounters = cms.InputTag("RPCTwinMuxRawToDigiPacked")
 
+# Compare RPCDigis
 process.load("DPGAnalysis.RPC.RPCDigiComparisonAnalyser_cff")
 process.RPCDigiComparisonAnalyser.lhsDigiCollection = cms.InputTag("rpcUnpackingModule")
 process.RPCDigiComparisonAnalyser.lhsDigiCollectionName = cms.string("Legacy")
@@ -96,11 +97,7 @@ process.RPCDigiComparisonRollAnalyserPacked = process.RPCDigiComparisonAnalyserP
 process.RPCDigiComparisonRollAnalyserPacked.groupPlots = cms.bool(False)
 process.RPCDigiComparisonRollAnalyserPacked.distanceRollWeight = cms.double(1.) # don't allow mismatches here
 
-process.load("DPGAnalysis.RPC.RPCAMCLinkCountersAnalyser_cff")
-process.RPCAMCLinkCountersAnalyserPacked = process.RPCAMCLinkCountersAnalyser.clone()
-process.RPCAMCLinkCountersAnalyserPacked.RPCAMCLinkCounters = cms.InputTag("RPCTwinMuxRawToDigiPacked")
-
-# EOD
+# Do the same taking EOD into account
 process.RPCTwinMuxDigiToRawEOD = process.RPCTwinMuxDigiToRaw.clone()
 process.RPCTwinMuxDigiToRawEOD.ignoreEOD = cms.bool(False)
 process.RPCTwinMuxDigiToRawEOD.inputTag = cms.InputTag("RPCTwinMuxRawToDigi")
@@ -123,7 +120,7 @@ process.RPCDigiComparisonRollAnalyserPackedEOD.rhsDigiCollectionName = cms.strin
 process.RPCAMCLinkCountersAnalyserPackedEOD = process.RPCAMCLinkCountersAnalyser.clone()
 process.RPCAMCLinkCountersAnalyserPackedEOD.RPCAMCLinkCounters = cms.InputTag("RPCTwinMuxRawToDigiPackedEOD")
 
-# Random digis
+# Do the same for random digis
 process.load("DPGAnalysis.RPC.RPCRandomDigiProducer_cff")
 process.RPCRandomDigiProducer.bxMin = cms.int32(-2)
 process.RPCRandomDigiProducer.bxMax = cms.int32(2)
@@ -152,10 +149,7 @@ process.RPCDigiComparisonRollAnalyserRandom.rhsDigiCollectionName = cms.string("
 process.RPCAMCLinkCountersAnalyserRandom = process.RPCAMCLinkCountersAnalyser.clone()
 process.RPCAMCLinkCountersAnalyserRandom.RPCAMCLinkCounters = cms.InputTag("RPCTwinMuxRawToDigiRandom")
 
-process.twinMuxStage2DigisPackedEOD = process.twinMuxStage2Digis.clone()
-process.twinMuxStage2DigisPackedEOD.DTTM7_FED_Source = cms.InputTag("RPCTwinMuxDigiToRawEOD")
-
-# RandomDigis, with EOD
+# Do the same for random digis taking EOD into account
 process.RPCTwinMuxDigiToRawRandomEOD = process.RPCTwinMuxDigiToRaw.clone()
 process.RPCTwinMuxDigiToRawRandomEOD.ignoreEOD = cms.bool(False)
 process.RPCTwinMuxDigiToRawRandomEOD.inputTag = cms.InputTag("RPCRandomDigiProducer")
@@ -183,33 +177,29 @@ process.options = cms.untracked.PSet( wantSummary = cms.untracked.bool(True) )
 # Source
 process.source = cms.Source("PoolSource"
                             , fileNames = cms.untracked.vstring(options.inputFiles)
-                            , lumisToProcess = lumilist.getVLuminosityBlockRange()
+                            # , lumisToProcess = lumilist.getVLuminosityBlockRange()
                             # , inputCommands =  cms.untracked.vstring("keep *"
                             # , "drop GlobalObjectMapRecord_*_*_*")
 )
 
-# process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(100) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(10000) )
 # process.maxLuminosityBlocks = cms.untracked.PSet(input = cms.untracked.int32(10))
 
-process.p = cms.Path((( process.rpcUnpackingModule + process.RPCTwinMuxRawToDigi) # first unpack
-                      * ( process.RPCDigiComparisonAnalyser + process.RPCDigiComparisonRollAnalyser + process.RPCAMCLinkCountersAnalyser # then analyse
-                          + ( process.RPCTwinMuxDigiToRaw * process.RPCTwinMuxRawToDigiPacked # and repack and unpack again
-                              * ( process.RPCDigiComparisonAnalyserPacked + process.RPCDigiComparisonRollAnalyserPacked + process.RPCAMCLinkCountersAnalyserPacked # then analyse that
-                                  + process.twinMuxStage2DigisPacked)) # and check the L1T TwinMux unpacker
-                          + ( process.RPCTwinMuxDigiToRawEOD * process.RPCTwinMuxRawToDigiPackedEOD # and repack and unpack again
-                              * ( process.RPCDigiComparisonAnalyserPackedEOD + process.RPCDigiComparisonRollAnalyserPackedEOD + process.RPCAMCLinkCountersAnalyserPackedEOD # then analyse that
-                                  + process.twinMuxStage2DigisPackedEOD)) # and check the L1T TwinMux unpacker
-                          + ( process.rpcpacker * process.rpcUnpackingModulePacked) # at the same time, you can test the RPC packer and unpacker
-                      )
-                      + ( process.RPCRandomDigiProducer
-                          * (( process.RPCTwinMuxDigiToRawRandom * process.RPCTwinMuxRawToDigiRandom
-                               * (process.RPCDigiComparisonAnalyserRandom + process.RPCDigiComparisonRollAnalyserRandom + process.RPCAMCLinkCountersAnalyserRandom))
-                             + ( process.RPCTwinMuxDigiToRawRandomEOD * process.RPCTwinMuxRawToDigiRandomEOD
-                                 * (process.RPCDigiComparisonAnalyserRandomEOD + process.RPCDigiComparisonRollAnalyserRandomEOD + process.RPCAMCLinkCountersAnalyserRandomEOD))
-                          )
-                      )
-                      + process.twinMuxStage2Digis) # also, unpack the twinmux data to check speed
-                     * process.EventFilter) # finally, throw event-data away
+process.p = cms.Path( ( ( ( process.rpcUnpackingModule + process.RPCTwinMuxRawToDigi ) # first unpack
+                          * ( process.RPCDigiComparisonAnalyser + process.RPCDigiComparisonRollAnalyser + process.RPCAMCLinkCountersAnalyser # then analyse this
+                              + ( process.RPCTwinMuxDigiToRaw * process.RPCTwinMuxRawToDigiPacked # and repack and unpack again
+                                  * ( process.RPCDigiComparisonAnalyserPacked + process.RPCDigiComparisonRollAnalyserPacked + process.RPCAMCLinkCountersAnalyserPacked ) ) # then analyse that too
+                              + ( process.RPCTwinMuxDigiToRawEOD * process.RPCTwinMuxRawToDigiPackedEOD # and repack and unpack again with EOD
+                                  * ( process.RPCDigiComparisonAnalyserPackedEOD + process.RPCDigiComparisonRollAnalyserPackedEOD + process.RPCAMCLinkCountersAnalyserPackedEOD) ) # then analyse that
+                          ) )
+                        + ( process.RPCRandomDigiProducer
+                            * ( ( process.RPCTwinMuxDigiToRawRandomEOD * process.RPCTwinMuxRawToDigiRandomEOD
+                                  * ( process.RPCDigiComparisonAnalyserRandomEOD + process.RPCDigiComparisonRollAnalyserRandomEOD + process.RPCAMCLinkCountersAnalyserRandomEOD ) )
+                                + ( process.RPCTwinMuxDigiToRawRandom * process.RPCTwinMuxRawToDigiRandom
+                                    * ( process.RPCDigiComparisonAnalyserRandom + process.RPCDigiComparisonRollAnalyserRandom + process.RPCAMCLinkCountersAnalyserRandom ) )
+                            ) ) )
+                      * process.EventFilter # finally, throw event-data away
+)
 
 # Output
 process.out = cms.OutputModule("PoolOutputModule"
