@@ -17,11 +17,14 @@
 #include "FWCore/Framework/interface/ESHandle.h"
 #include "DataFormats/Common/interface/Handle.h"
 
-// #include "FWCore/MessageLogger/interface/MessageLogger.h"
+#include "FWCore/MessageLogger/interface/MessageLogger.h"
 
 #include "CondFormats/DataRecord/interface/RPCTwinMuxLinkMapRcd.h"
+#include "CondFormats/DataRecord/interface/RPCCPPFLinkMapRcd.h"
 #include "CondFormats/RPCObjects/interface/RPCAMCLink.h"
 #include "CondFormats/RPCObjects/interface/RPCAMCLinkMap.h"
+
+#include "EventFilter/RPCRawToDigi/interface/RPCAMCLinkEvents.h"
 
 void RPCAMCLinkCountersAnalyserData::initialise(RPCAMCLinkCountersAnalyserRunCache const & _run_cache)
 {
@@ -42,9 +45,9 @@ void RPCAMCLinkCountersAnalyserData::initialise(RPCAMCLinkCountersAnalyserRunCac
         _name += "_AMC";
         _title += " AMC Counters";
 
-        fed_amc_type_count_->insert(std::pair<::uint32_t, MergeTH2D>(_it->first.getId()
-                                                                     , MergeTH2D(_name.c_str(), _title.c_str()
-                                                                                 , _it->second, _run_cache.amc_type_axis_)));
+        fed_amc_type_count_->insert(std::pair<std::uint32_t, MergeTH2D>(_it->first.getId()
+                                                                        , MergeTH2D(_name.c_str(), _title.c_str()
+                                                                                    , _it->second, _run_cache.amc_type_axis_)));
     }
 
     std::map<RPCAMCLink, TAxis> const & _fed_inputs = _run_cache.fed_input_axis_;
@@ -58,9 +61,9 @@ void RPCAMCLinkCountersAnalyserData::initialise(RPCAMCLinkCountersAnalyserRunCac
         _name += "_Input";
         _title += " Input Counters";
 
-        fed_amc_input_count_->insert(std::pair<::uint32_t, MergeTH2D>(_it->first.getId()
-                                                                      , MergeTH2D(_name.c_str(), _title.c_str()
-                                                                                  , _fed_amcs.at(_it->first), _it->second)));
+        fed_amc_input_count_->insert(std::pair<std::uint32_t, MergeTH2D>(_it->first.getId()
+                                                                         , MergeTH2D(_name.c_str(), _title.c_str()
+                                                                                     , _fed_amcs.at(_it->first), _it->second)));
     }
 
     std::map<RPCAMCLink, TAxis> const & _amc_inputs = _run_cache.amc_input_axis_;
@@ -74,33 +77,54 @@ void RPCAMCLinkCountersAnalyserData::initialise(RPCAMCLinkCountersAnalyserRunCac
         std::replace(_title.begin(), _title.end(), '/', ' ');
         _title += " Input Counters";
 
-        amc_input_type_count_->insert(std::pair<::uint32_t, MergeTH2D>(_it->first.getId()
-                                                                       , MergeTH2D(_name.c_str(), _title.c_str()
-                                                                                   , _it->second, _run_cache.input_type_axis_)));
+        amc_input_type_count_->insert(std::pair<std::uint32_t, MergeTH2D>(_it->first.getId()
+                                                                          , MergeTH2D(_name.c_str(), _title.c_str()
+                                                                                      , _it->second, _run_cache.input_type_axis_)));
     }
 }
 
-RPCAMCLinkCountersAnalyser::RPCAMCLinkCountersAnalyser(edm::ParameterSet const & _config)
+std::unique_ptr<RPCAMCLinkCountersAnalyserGlobalCache>
+RPCAMCLinkCountersAnalyser::initializeGlobalCache(edm::ParameterSet const & _config)
 {
-    counters_token_ = consumes<RPCAMCLinkCounters>(_config.getParameter<edm::InputTag>("RPCAMCLinkCounters"));
+    std::unique_ptr<RPCAMCLinkCountersAnalyserGlobalCache> _global_cache(new RPCAMCLinkCountersAnalyserGlobalCache());
+
+    _global_cache->link_map_rcd_ = _config.getParameter<std::string>("RPCAMCLinkMapRcd");
+
+    return _global_cache;
+}
+
+RPCAMCLinkCountersAnalyser::RPCAMCLinkCountersAnalyser(edm::ParameterSet const & _config
+                                                       , RPCAMCLinkCountersAnalyserGlobalCache const *)
+    : filter_(_config.getParameter<bool>("Filter"))
+{
+    for (auto const & _input_tag : _config.getParameter<std::vector<edm::InputTag> >("RPCAMCLinkCounters")) {
+        counters_token_.push_back(consumes<RPCAMCLinkCounters>(_input_tag));
+    }
 
     produces<MergeTH2D, edm::InRun>("FEDTypeCount");
-    produces<MergeMap<::uint32_t, MergeTH2D>, edm::InRun>("FEDAMCTypeCount");
-    produces<MergeMap<::uint32_t, MergeTH2D>, edm::InRun>("FEDAMCInputCount");
-    produces<MergeMap<::uint32_t, MergeTH2D>, edm::InRun>("AMCInputTypeCount");
+    produces<MergeMap<std::uint32_t, MergeTH2D>, edm::InRun>("FEDAMCTypeCount");
+    produces<MergeMap<std::uint32_t, MergeTH2D>, edm::InRun>("FEDAMCInputCount");
+    produces<MergeMap<std::uint32_t, MergeTH2D>, edm::InRun>("AMCInputTypeCount");
 }
 
 void RPCAMCLinkCountersAnalyser::fillDescriptions(edm::ConfigurationDescriptions & _descs)
 {
     edm::ParameterSetDescription _desc;
 
-    _desc.add<edm::InputTag>("RPCAMCLinkCounters", edm::InputTag("RPCTwinMuxRawToDigi", ""));
+    _desc.add<bool>("Filter", false);
+
+    std::vector<edm::InputTag> _input_tags;
+    _input_tags.push_back(edm::InputTag("RPCTwinMuxRawToDigi", ""));
+    _input_tags.push_back(edm::InputTag("RPCTwinMuxRawToDigi", "RPCAMCUnpacker"));
+    _desc.add<std::vector<edm::InputTag> >("RPCAMCLinkCounters", _input_tags);
+
+    _desc.add<std::string>("RPCAMCLinkMapRcd", "RPCTwinMuxLinkMapRcd");
 
     _descs.add("RPCAMCLinkCountersAnalyser", _desc);
 }
 
 std::shared_ptr<RPCAMCLinkCountersAnalyserRunCache> RPCAMCLinkCountersAnalyser::globalBeginRun(edm::Run const & _run, edm::EventSetup const & _setup
-                                                                                               , GlobalCache const *)
+                                                                                               , GlobalCache const * _global_cache)
 {
     // Get the list of links
     std::set<int> _feds;
@@ -108,12 +132,19 @@ std::shared_ptr<RPCAMCLinkCountersAnalyserRunCache> RPCAMCLinkCountersAnalyser::
     std::map<RPCAMCLink, std::set<int> > _amc_inputs;
     std::map<RPCAMCLink, std::set<int> > _fed_inputs;
 
-    edm::ESHandle<RPCAMCLinkMap> _es_rpc_tm_link_map;
-    _setup.get<RPCTwinMuxLinkMapRcd>().get(_es_rpc_tm_link_map);
+    edm::ESHandle<RPCAMCLinkMap> _es_rpc_link_map;
 
-    for (RPCAMCLinkMap::map_type::const_iterator _tm_link = _es_rpc_tm_link_map->getMap().begin()
-             ; _tm_link != _es_rpc_tm_link_map->getMap().end() ; ++_tm_link) {
-        RPCAMCLink const & _input(_tm_link->first);
+    if (_global_cache->link_map_rcd_ == "RPCTwinMuxLinkMapRcd") {
+        _setup.get<RPCTwinMuxLinkMapRcd>().get(_es_rpc_link_map);
+    } else if (_global_cache->link_map_rcd_ == "RPCCPPFLinkMapRcd") {
+        _setup.get<RPCCPPFLinkMapRcd>().get(_es_rpc_link_map);
+    } else {
+        edm::LogError("RPCAMCLinkCountersAnalyser") << "Unknown RPCAMCLinkMapRcd: " << _global_cache->link_map_rcd_;
+    }
+
+    for (RPCAMCLinkMap::map_type::const_iterator _link = _es_rpc_link_map->getMap().begin()
+             ; _link != _es_rpc_link_map->getMap().end() ; ++_link) {
+        RPCAMCLink const & _input(_link->first);
         RPCAMCLink _amc(_input);
         _amc.setAMCInput();
         RPCAMCLink _fed(_amc);
@@ -147,7 +178,6 @@ std::shared_ptr<RPCAMCLinkCountersAnalyserRunCache> RPCAMCLinkCountersAnalyser::
 
     for (std::map<RPCAMCLink, std::set<int> >::const_iterator _it = _fed_amcs.begin()
              ; _it != _fed_amcs.end() ; ++_it) {
-
         std::vector<double> _d_amcs;
         _d_amcs.reserve(_it->second.size() + 1);
         for (int const & _amc : _it->second) {
@@ -169,7 +199,6 @@ std::shared_ptr<RPCAMCLinkCountersAnalyserRunCache> RPCAMCLinkCountersAnalyser::
 
     for (std::map<RPCAMCLink, std::set<int> >::const_iterator _it = _amc_inputs.begin()
              ; _it != _amc_inputs.end() ; ++_it) {
-
         std::vector<double> _d_inputs;
         _d_inputs.reserve(_it->second.size() + 1);
         for (int const & _input : _it->second) {
@@ -191,7 +220,6 @@ std::shared_ptr<RPCAMCLinkCountersAnalyserRunCache> RPCAMCLinkCountersAnalyser::
 
     for (std::map<RPCAMCLink, std::set<int> >::const_iterator _it = _fed_inputs.begin()
              ; _it != _fed_inputs.end() ; ++_it) {
-
         std::vector<double> _d_inputs;
         _d_inputs.reserve(_it->second.size() + 1);
         for (int const & _input : _it->second) {
@@ -211,36 +239,40 @@ std::shared_ptr<RPCAMCLinkCountersAnalyserRunCache> RPCAMCLinkCountersAnalyser::
         _axis.SetNameTitle("FEDInput", "Input");
     }
 
+    // Event Type Axes
     {
-        _run_cache->fed_type_axis_ = TAxis(RPCAMCLinkCounters::fed_max_ - RPCAMCLinkCounters::fed_min_ + 1
-                                           , -.5 + RPCAMCLinkCounters::fed_min_, .5 + RPCAMCLinkCounters::fed_max_);
-        _run_cache->fed_type_axis_.SetNameTitle("FEDTypes", "FED Counter");
+        _run_cache->fed_type_axis_ = TAxis(RPCAMCLinkEvents::fed_max_ - RPCAMCLinkEvents::fed_min_
+                                           , -.5 + RPCAMCLinkEvents::fed_min_, -.5 + RPCAMCLinkEvents::fed_max_);
+        _run_cache->fed_type_axis_.SetNameTitle("FEDEvents", "FED Counter");
         _run_cache->fed_type_axis_.CenterLabels(true);
         int _bin(1);
-        for (unsigned int _type = RPCAMCLinkCounters::fed_min_ ; _type <= RPCAMCLinkCounters::fed_max_ ; ++_type, ++_bin) {
-            _run_cache->fed_type_axis_.SetBinLabel(_bin, RPCAMCLinkCounters::getTypeName(_type).c_str());
+        for (unsigned int _event = RPCAMCLinkEvents::fed_min_
+                 ; _event < RPCAMCLinkEvents::fed_max_ ; ++_event, ++_bin) {
+            _run_cache->fed_type_axis_.SetBinLabel(_bin, RPCAMCLinkEvents::getEventName(_event | RPCAMCLinkEvent::fed_).c_str());
         }
     }
 
     {
-        _run_cache->amc_type_axis_ = TAxis(RPCAMCLinkCounters::amc_max_ - RPCAMCLinkCounters::amc_min_ + 1
-                                           , -.5 + RPCAMCLinkCounters::amc_min_, .5 + RPCAMCLinkCounters::amc_max_);
-        _run_cache->amc_type_axis_.SetNameTitle("AMCTypes", "AMC Counter");
+        _run_cache->amc_type_axis_ = TAxis(RPCAMCLinkEvents::amc_max_ - RPCAMCLinkEvents::amc_min_
+                                           , -.5 + RPCAMCLinkEvents::amc_min_, -.5 + RPCAMCLinkEvents::amc_max_);
+        _run_cache->amc_type_axis_.SetNameTitle("AMCEvents", "AMC Counter");
         _run_cache->amc_type_axis_.CenterLabels(true);
         int _bin(1);
-        for (unsigned int _type = RPCAMCLinkCounters::amc_min_ ; _type <= RPCAMCLinkCounters::amc_max_ ; ++_type, ++_bin) {
-            _run_cache->amc_type_axis_.SetBinLabel(_bin, RPCAMCLinkCounters::getTypeName(_type).c_str());
+        for (unsigned int _event = RPCAMCLinkEvents::amc_min_
+                 ; _event < RPCAMCLinkEvents::amc_max_ ; ++_event, ++_bin) {
+            _run_cache->amc_type_axis_.SetBinLabel(_bin, RPCAMCLinkEvents::getEventName(_event | RPCAMCLinkEvent::amc_).c_str());
         }
     }
 
     {
-        _run_cache->input_type_axis_ = TAxis(RPCAMCLinkCounters::input_max_ - RPCAMCLinkCounters::input_min_ + 1
-                                             , -.5 + RPCAMCLinkCounters::input_min_, .5 + RPCAMCLinkCounters::input_max_);
-        _run_cache->input_type_axis_.SetNameTitle("InputTypes", "AMC Input Counter");
+        _run_cache->input_type_axis_ = TAxis(RPCAMCLinkEvents::input_max_ - RPCAMCLinkEvents::input_min_
+                                             , -.5 + RPCAMCLinkEvents::input_min_, -.5 + RPCAMCLinkEvents::input_max_);
+        _run_cache->input_type_axis_.SetNameTitle("InputEvents", "Input Counter");
         _run_cache->input_type_axis_.CenterLabels(true);
         int _bin(1);
-        for (unsigned int _type = RPCAMCLinkCounters::input_min_ ; _type <= RPCAMCLinkCounters::input_max_ ; ++_type, ++_bin) {
-            _run_cache->input_type_axis_.SetBinLabel(_bin, RPCAMCLinkCounters::getTypeName(_type).c_str());
+        for (unsigned int _event = RPCAMCLinkEvents::input_min_
+                 ; _event < RPCAMCLinkEvents::input_max_ ; ++_event, ++_bin) {
+            _run_cache->input_type_axis_.SetBinLabel(_bin, RPCAMCLinkEvents::getEventName(_event | RPCAMCLinkEvent::input_).c_str());
         }
     }
 
@@ -260,49 +292,45 @@ void RPCAMCLinkCountersAnalyser::beginRun(edm::Run const & _run, edm::EventSetup
     stream_data_.initialise(*(runCache()));
 }
 
-void RPCAMCLinkCountersAnalyser::produce(edm::Event & _event, edm::EventSetup const & _setup)
+bool RPCAMCLinkCountersAnalyser::filter(edm::Event & _event, edm::EventSetup const & _setup)
 {
-    edm::Handle<RPCAMCLinkCounters> _counters_handle;
-    _event.getByToken(counters_token_, _counters_handle);
+    bool _keep(true);
+    for (auto const & _token : counters_token_) {
+        edm::Handle<RPCAMCLinkCounters> _counters_handle;
+        _event.getByToken(_token, _counters_handle);
 
-    // FED Types
-    std::pair<RPCAMCLinkCounters::const_iterator, RPCAMCLinkCounters::const_iterator> _fed_counters
-        = _counters_handle->getCounters(RPCAMCLinkCounters::fed_min_, RPCAMCLinkCounters::fed_max_);
+        for (auto _link_type_count : _counters_handle->getCounters()) {
+            unsigned int _event(_link_type_count.first.first);
+            unsigned int _group(RPCAMCLinkEvent::getGroup(_event));
+            unsigned int _level(RPCAMCLinkEvent::getLevel(_event));
+            _event = RPCAMCLinkEvent::getEvent(_event);
+            if (_level > RPCAMCLinkEvent::info_) {
+                _keep = false;
+            }
 
-    for (RPCAMCLinkCounters::const_iterator _it = _fed_counters.first
-             ; _it != _fed_counters.second ; ++_it) {
-        RPCAMCLink _input(_it->first.second);
-        stream_data_.fed_type_count_->Fill(_input.getFED(), _it->first.first, _it->second);
-    }
+            RPCAMCLink _input(_link_type_count.first.second);
 
-    // AMC Types
-    std::pair<RPCAMCLinkCounters::const_iterator, RPCAMCLinkCounters::const_iterator> _amc_counters
-        = _counters_handle->getCounters(RPCAMCLinkCounters::amc_min_, RPCAMCLinkCounters::amc_max_);
+            unsigned int _count(_link_type_count.second);
 
-    for (RPCAMCLinkCounters::const_iterator _it = _amc_counters.first
-             ; _it != _amc_counters.second ; ++_it) {
-        RPCAMCLink _input(_it->first.second);
-        RPCAMCLink _fed(_input);
-        _fed.setAMCNumber();
-        stream_data_.fed_amc_type_count_->at(_fed.getId())->Fill(_input.getAMCNumber(), _it->first.first, _it->second);
-    }
-
-    // Input Types
-    std::pair<RPCAMCLinkCounters::const_iterator, RPCAMCLinkCounters::const_iterator> _input_counters
-        = _counters_handle->getCounters(RPCAMCLinkCounters::input_min_, RPCAMCLinkCounters::input_max_);
-
-    for (RPCAMCLinkCounters::const_iterator _it = _input_counters.first
-             ; _it != _input_counters.second ; ++_it) {
-        RPCAMCLink _input(_it->first.second);
-        RPCAMCLink _amc(_input);
-        _amc.setAMCInput();
-        RPCAMCLink _fed(_amc);
-        _fed.setAMCNumber();
-        stream_data_.amc_input_type_count_->at(_amc.getId())->Fill(_input.getAMCInput(), _it->first.first, _it->second);
-        if (_it->first.first != RPCAMCLinkCounters::input_data_ && _it->first.first != RPCAMCLinkCounters::input_eod_) {
-            stream_data_.fed_amc_input_count_->at(_fed.getId())->Fill(_input.getAMCNumber(), _input.getAMCInput(), _it->second);
+            if (_group == RPCAMCLinkEvent::fed_) {
+                stream_data_.fed_type_count_->Fill(_input.getFED(), _event, _count);
+            } else if (_group == RPCAMCLinkEvent::amc_) {
+                RPCAMCLink _fed(_input);
+                _fed.setAMCNumber();
+                stream_data_.fed_amc_type_count_->at(_fed.getId())->Fill(_input.getAMCNumber(), _event, _count);
+            } else if (_group == RPCAMCLinkEvent::input_) {
+                RPCAMCLink _amc(_input);
+                _amc.setAMCInput();
+                RPCAMCLink _fed(_amc);
+                _fed.setAMCNumber();
+                stream_data_.amc_input_type_count_->at(_amc.getId())->Fill(_input.getAMCInput(), _event, _count);
+                if (_level > RPCAMCLinkEvent::info_) {
+                    stream_data_.fed_amc_input_count_->at(_fed.getId())->Fill(_input.getAMCNumber(), _input.getAMCInput(), _count);
+                }
+            }
         }
     }
+    return (!filter_ || _keep);
 }
 
 void RPCAMCLinkCountersAnalyser::endRunSummary(edm::Run const & _run, edm::EventSetup const & _setup
@@ -319,9 +347,9 @@ void RPCAMCLinkCountersAnalyser::globalEndRunProduce(edm::Run & _run, edm::Event
                                                      , RPCAMCLinkCountersAnalyserData const * _run_data)
 {
     std::unique_ptr<MergeTH2D> _fed_type_count(new MergeTH2D(_run_data->fed_type_count_));
-    std::unique_ptr<MergeMap<::uint32_t, MergeTH2D> > _fed_amc_type_count(new MergeMap<::uint32_t, MergeTH2D>(_run_data->fed_amc_type_count_));
-    std::unique_ptr<MergeMap<::uint32_t, MergeTH2D> > _fed_amc_input_count(new MergeMap<::uint32_t, MergeTH2D>(_run_data->fed_amc_input_count_));
-    std::unique_ptr<MergeMap<::uint32_t, MergeTH2D> > _amc_input_type_count(new MergeMap<::uint32_t, MergeTH2D>(_run_data->amc_input_type_count_));
+    std::unique_ptr<MergeMap<std::uint32_t, MergeTH2D> > _fed_amc_type_count(new MergeMap<std::uint32_t, MergeTH2D>(_run_data->fed_amc_type_count_));
+    std::unique_ptr<MergeMap<std::uint32_t, MergeTH2D> > _fed_amc_input_count(new MergeMap<std::uint32_t, MergeTH2D>(_run_data->fed_amc_input_count_));
+    std::unique_ptr<MergeMap<std::uint32_t, MergeTH2D> > _amc_input_type_count(new MergeMap<std::uint32_t, MergeTH2D>(_run_data->amc_input_type_count_));
 
     _run.put(std::move(_fed_type_count), "FEDTypeCount");
     _run.put(std::move(_fed_amc_type_count), "FEDAMCTypeCount");

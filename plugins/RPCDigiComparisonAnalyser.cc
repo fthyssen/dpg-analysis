@@ -5,6 +5,7 @@
 
 #include <set>
 #include <cmath>
+#include <iostream>
 
 #include "TAxis.h"
 
@@ -30,17 +31,18 @@
 #include "DPGAnalysis/RPC/interface/RPCMaskParser.h"
 #include "DPGAnalysis/Tools/interface/associator.h"
 
-RPCDigiDistance::RPCDigiDistance(float _weight_strip, float _weight_bx, float _weight_roll)
+RPCDigiDistance::RPCDigiDistance(float _weight_strip, float _weight_bx, float _weight_roll, int _shift_bx)
     : weight_strip_(_weight_strip)
     , weight_bx_(_weight_bx)
     , weight_roll_(_weight_roll)
+    , shift_bx_(_shift_bx)
 {}
 
 float RPCDigiDistance::operator()(std::pair<RPCDetId, RPCDigi> const & _lhs, std::pair<RPCDetId, RPCDigi> const & _rhs) const
 {
     RPCMaskDetId _lhs_id(_lhs.first), _rhs_id(_rhs.first);
     return (std::fabs(_lhs.second.strip() - _rhs.second.strip()) * weight_strip_
-            + std::fabs(_lhs.second.bx() - _rhs.second.bx()) * weight_bx_
+            + std::fabs(_lhs.second.bx() - _rhs.second.bx() + shift_bx_) * weight_bx_
             + std::fabs(_lhs_id - _rhs_id) * weight_roll_);
 }
 
@@ -57,6 +59,11 @@ void RPCDigiDistance::setBXWeight(float _weight)
 void RPCDigiDistance::setRollWeight(float _weight)
 {
     weight_roll_ = _weight;
+}
+
+void RPCDigiDistance::setBXShift(int _shift)
+{
+    shift_bx_ = _shift;
 }
 
 void RPCDigiComparisonAnalyserData::initialise(RPCDigiComparisonAnalyserGlobalCache const & _global_cache
@@ -77,34 +84,34 @@ void RPCDigiComparisonAnalyserData::initialise(RPCDigiComparisonAnalyserGlobalCa
         std::replace(_name.begin(), _name.end(), '+', 'P');
         std::replace(_name.begin(), _name.end(), '-', 'N');
 
-        group_strip_strip_count_->insert(std::pair<::uint32_t, MergeTH2D>(_it->first.getId()
-                                                                          , MergeTH2D(_name.c_str(), _title.c_str()
-                                                                                      , _global_cache.lhs_strip_axis_
-                                                                                      , _global_cache.rhs_strip_axis_)));
-        group_bx_bx_count_->insert(std::pair<::uint32_t, MergeTH2D>(_it->first.getId()
-                                                                    , MergeTH2D(_name.c_str(), _title.c_str()
-                                                                                , _global_cache.lhs_bx_axis_
-                                                                                , _global_cache.rhs_bx_axis_)));
+        group_strip_strip_count_->insert(std::pair<std::uint32_t, MergeTH2D>(_it->first.getId()
+                                                                             , MergeTH2D(_name.c_str(), _title.c_str()
+                                                                                         , _global_cache.lhs_strip_axis_
+                                                                                         , _global_cache.rhs_strip_axis_)));
+        group_bx_bx_count_->insert(std::pair<std::uint32_t, MergeTH2D>(_it->first.getId()
+                                                                       , MergeTH2D(_name.c_str(), _title.c_str()
+                                                                                   , _global_cache.lhs_bx_axis_
+                                                                                   , _global_cache.rhs_bx_axis_)));
 
         if (_global_cache.group_plots_) {
             TAxis _lhs_roll_axis(_it->second), _rhs_roll_axis(_it->second);
             _lhs_roll_axis.SetNameTitle("RPCRoll", (std::string("RPC Roll ") + _global_cache.lhs_name_).c_str());
             _rhs_roll_axis.SetNameTitle("RPCRoll", (std::string("RPC Roll ") + _global_cache.rhs_name_).c_str());
 
-            group_roll_roll_count_->insert(std::pair<::uint32_t, MergeTH2D>(_it->first.getId()
-                                                                            , MergeTH2D(_name.c_str(), _title.c_str()
-                                                                                        , _lhs_roll_axis, _rhs_roll_axis)));
+            group_roll_roll_count_->insert(std::pair<std::uint32_t, MergeTH2D>(_it->first.getId()
+                                                                               , MergeTH2D(_name.c_str(), _title.c_str()
+                                                                                           , _lhs_roll_axis, _rhs_roll_axis)));
 
             std::string _lhsonly_title(_title + ": " + _global_cache.lhs_name_ + " only");
-            group_lumisec_roll_lhsonly_->insert(std::pair<::uint32_t, MergeTH2D>(_it->first.getId()
-                                                                                 , MergeTH2D(_name.c_str(), _lhsonly_title.c_str()
-                                                                                             , _run_cache.lumisec_axis_
-                                                                                             , _lhs_roll_axis)));
+            group_lumisec_roll_lhsonly_->insert(std::pair<std::uint32_t, MergeTH2D>(_it->first.getId()
+                                                                                    , MergeTH2D(_name.c_str(), _lhsonly_title.c_str()
+                                                                                                , _run_cache.lumisec_axis_
+                                                                                                , _lhs_roll_axis)));
             std::string _rhsonly_title(_title + ": " + _global_cache.rhs_name_ + " only");
-            group_lumisec_roll_rhsonly_->insert(std::pair<::uint32_t, MergeTH2D>(_it->first.getId()
-                                                                                 , MergeTH2D(_name.c_str(), _rhsonly_title.c_str()
-                                                                                             , _run_cache.lumisec_axis_
-                                                                                             , _rhs_roll_axis)));
+            group_lumisec_roll_rhsonly_->insert(std::pair<std::uint32_t, MergeTH2D>(_it->first.getId()
+                                                                                    , MergeTH2D(_name.c_str(), _rhsonly_title.c_str()
+                                                                                                , _run_cache.lumisec_axis_
+                                                                                                , _rhs_roll_axis)));
         }
     }
 
@@ -113,45 +120,46 @@ void RPCDigiComparisonAnalyserData::initialise(RPCDigiComparisonAnalyserGlobalCa
 
 std::unique_ptr<RPCDigiComparisonAnalyserGlobalCache> RPCDigiComparisonAnalyser::initializeGlobalCache(edm::ParameterSet const & _config)
 {
-    RPCDigiComparisonAnalyserGlobalCache * _cache = new RPCDigiComparisonAnalyserGlobalCache();
+    RPCDigiComparisonAnalyserGlobalCache * _global_cache = new RPCDigiComparisonAnalyserGlobalCache();
 
     // lhs_name_, rhs_name_
-    _cache->lhs_name_ = (_config.getParameter<std::string>("lhsDigiCollectionName"));
-    _cache->rhs_name_ = (_config.getParameter<std::string>("rhsDigiCollectionName"));
-    if (_cache->lhs_name_.empty()) {
-        _cache->lhs_name_ = _config.getParameter<edm::InputTag>("lhsDigiCollection").label();
+    _global_cache->lhs_name_ = (_config.getParameter<std::string>("lhsDigiCollectionName"));
+    _global_cache->rhs_name_ = (_config.getParameter<std::string>("rhsDigiCollectionName"));
+    if (_global_cache->lhs_name_.empty()) {
+        _global_cache->lhs_name_ = _config.getParameter<edm::InputTag>("lhsDigiCollection").label();
     }
-    if (_cache->rhs_name_.empty()) {
-        _cache->rhs_name_ = _config.getParameter<edm::InputTag>("rhsDigiCollection").label();
+    if (_global_cache->rhs_name_.empty()) {
+        _global_cache->rhs_name_ = _config.getParameter<edm::InputTag>("rhsDigiCollection").label();
     }
 
-    _cache->group_plots_ = (_config.getParameter<bool>("groupPlots"));
+    _global_cache->group_plots_ = (_config.getParameter<bool>("groupPlots"));
 
-    _cache->distance_function_.setStripWeight(_config.getParameter<double>("distanceStripWeight"));
-    _cache->distance_function_.setBXWeight   (_config.getParameter<double>("distanceBXWeight"));
-    _cache->distance_function_.setRollWeight (_config.getParameter<double>("distanceRollWeight"));
-    _cache->distance_max_ = _config.getParameter<double>("distanceMax");
+    _global_cache->distance_function_.setStripWeight(_config.getParameter<double>("distanceStripWeight"));
+    _global_cache->distance_function_.setBXWeight   (_config.getParameter<double>("distanceBXWeight"));
+    _global_cache->distance_function_.setRollWeight (_config.getParameter<double>("distanceRollWeight"));
+    _global_cache->distance_function_.setBXShift    (_config.getParameter<int>("distanceBXShift"));
+    _global_cache->distance_max_ = _config.getParameter<double>("distanceMax");
 
     // bx_min_, bx_max_, lhs_bx_axis_, rhs_bx_axis_
-    _cache->bx_min_ = _config.getParameter<int>("bxMin");
-    _cache->bx_max_ = _config.getParameter<int>("bxMax");
-    _cache->lhs_bx_axis_ = TAxis(_cache->bx_max_ - _cache->bx_min_ + 2, -1.5 + _cache->bx_min_, .5 + _cache->bx_max_);
-    _cache->lhs_bx_axis_.SetNameTitle("BX", (std::string("Bunch Crossing ") + _cache->lhs_name_).c_str());
-    _cache->rhs_bx_axis_ = _cache->lhs_bx_axis_;
-    _cache->rhs_bx_axis_.SetNameTitle("BX", (std::string("Bunch Crossing ") + _cache->rhs_name_).c_str());
+    _global_cache->bx_min_ = _config.getParameter<int>("bxMin");
+    _global_cache->bx_max_ = _config.getParameter<int>("bxMax");
+    _global_cache->lhs_bx_axis_ = TAxis(_global_cache->bx_max_ - _global_cache->bx_min_ + 2, -1.5 + _global_cache->bx_min_, .5 + _global_cache->bx_max_);
+    _global_cache->lhs_bx_axis_.SetNameTitle("BX", (std::string("Bunch Crossing ") + _global_cache->lhs_name_).c_str());
+    _global_cache->rhs_bx_axis_ = _global_cache->lhs_bx_axis_;
+    _global_cache->rhs_bx_axis_.SetNameTitle("BX", (std::string("Bunch Crossing ") + _global_cache->rhs_name_).c_str());
 
     // lhs_strip_axis_, rhs_strip_axis_
-    _cache->lhs_strip_axis_ = TAxis(129, -.5, 128.5);
-    _cache->lhs_strip_axis_.SetNameTitle("Strip", (std::string("Strip ") + _cache->lhs_name_).c_str());
-    _cache->rhs_strip_axis_ = _cache->lhs_strip_axis_;
-    _cache->rhs_strip_axis_.SetNameTitle("Strip", (std::string("Strip ") + _cache->rhs_name_).c_str());
+    _global_cache->lhs_strip_axis_ = TAxis(129, -.5, 128.5);
+    _global_cache->lhs_strip_axis_.SetNameTitle("Strip", (std::string("Strip ") + _global_cache->lhs_name_).c_str());
+    _global_cache->rhs_strip_axis_ = _global_cache->lhs_strip_axis_;
+    _global_cache->rhs_strip_axis_.SetNameTitle("Strip", (std::string("Strip ") + _global_cache->rhs_name_).c_str());
 
     // roll_selection_
     std::vector<std::string> _roll_selection(_config.getParameter<std::vector<std::string> >("rollSelection"));
     for (std::vector<std::string>::const_iterator _roll = _roll_selection.begin()
              ; _roll != _roll_selection.end() ; ++_roll) {
-        _cache->roll_selection_.push_back(RPCMaskParser::parse(*_roll));
-        edm::LogInfo("RPCDigiComparisonAnalyser") << "Selected roll " << _cache->roll_selection_.back();
+        _global_cache->roll_selection_.push_back(RPCMaskParser::parse(*_roll));
+        edm::LogInfo("RPCDigiComparisonAnalyser") << "Selected roll " << _global_cache->roll_selection_.back();
     }
 
     // run_lumirange_
@@ -163,8 +171,8 @@ std::unique_ptr<RPCDigiComparisonAnalyserGlobalCache> RPCDigiComparisonAnalyser:
         if (_lumirange->startRun() == _lumirange->endRun()) {
             unsigned long long _run(_lumirange->startRun());
             std::pair<unsigned long long, unsigned long long> _lumirange_pair(_lumirange->startLumi(), _lumirange->endLumi());
-            if ((_run_lumirange = _cache->run_lumirange_.find(_run)) == _cache->run_lumirange_.end()) {
-                _cache->run_lumirange_.insert(std::make_pair(_run, _lumirange_pair));
+            if ((_run_lumirange = _global_cache->run_lumirange_.find(_run)) == _global_cache->run_lumirange_.end()) {
+                _global_cache->run_lumirange_.insert(std::make_pair(_run, _lumirange_pair));
             } else {
                 if (_lumirange_pair.first < _run_lumirange->second.first) {
                     _run_lumirange->second.first = _lumirange_pair.first;
@@ -176,26 +184,31 @@ std::unique_ptr<RPCDigiComparisonAnalyserGlobalCache> RPCDigiComparisonAnalyser:
         }
     }
 
-    return std::unique_ptr<RPCDigiComparisonAnalyserGlobalCache>(_cache);
+    return std::unique_ptr<RPCDigiComparisonAnalyserGlobalCache>(_global_cache);
 }
 
 RPCDigiComparisonAnalyser::RPCDigiComparisonAnalyser(edm::ParameterSet const & _config, RPCDigiComparisonAnalyserGlobalCache const *)
+    : filter_(_config.getParameter<bool>("Filter"))
 {
     lhs_digis_token_ = consumes<RPCDigiCollection>(_config.getParameter<edm::InputTag>("lhsDigiCollection"));
     rhs_digis_token_ = consumes<RPCDigiCollection>(_config.getParameter<edm::InputTag>("rhsDigiCollection"));
 
-    produces<MergeMap<::uint32_t, MergeTH2D>, edm::InRun>("GroupStripStripCount");
-    produces<MergeMap<::uint32_t, MergeTH2D>, edm::InRun>("GroupBXBXCount");
+    produces<bool>("Report");
 
-    produces<MergeMap<::uint32_t, MergeTH2D>, edm::InRun>("GroupRollRollCount");
-    produces<MergeMap<::uint32_t, MergeTH2D>, edm::InRun>("GroupLSRollLHSOnly");
-    produces<MergeMap<::uint32_t, MergeTH2D>, edm::InRun>("GroupLSRollRHSOnly");
+    produces<MergeMap<std::uint32_t, MergeTH2D>, edm::InRun>("GroupStripStripCount");
+    produces<MergeMap<std::uint32_t, MergeTH2D>, edm::InRun>("GroupBXBXCount");
+
+    produces<MergeMap<std::uint32_t, MergeTH2D>, edm::InRun>("GroupRollRollCount");
+    produces<MergeMap<std::uint32_t, MergeTH2D>, edm::InRun>("GroupLSRollLHSOnly");
+    produces<MergeMap<std::uint32_t, MergeTH2D>, edm::InRun>("GroupLSRollRHSOnly");
     produces<MergeTH1D, edm::InRun>("LSProcessed");
 }
 
 void RPCDigiComparisonAnalyser::fillDescriptions(edm::ConfigurationDescriptions & _descs)
 {
     edm::ParameterSetDescription _desc;
+
+    _desc.add<bool>("Filter", false);
 
     _desc.add<edm::InputTag>("lhsDigiCollection", edm::InputTag("rpcunpacker", ""));
     _desc.add<edm::InputTag>("rhsDigiCollection", edm::InputTag("RPCDCCRawToDigi", ""));
@@ -208,6 +221,7 @@ void RPCDigiComparisonAnalyser::fillDescriptions(edm::ConfigurationDescriptions 
     _desc.add<double>("distanceStripWeight", .005); // any distance
     _desc.add<double>("distanceBXWeight"   , .1);   // any distance
     _desc.add<double>("distanceRollWeight" , 1. / RPCMaskDetId::mask_sector_); // same region-station-layer-ring
+    _desc.add<int>   ("distanceBXShift"    , 0);
     _desc.add<double>("distanceMax"        , 1.);
 
     _desc.add<int>("bxMin", -2);
@@ -221,7 +235,7 @@ void RPCDigiComparisonAnalyser::fillDescriptions(edm::ConfigurationDescriptions 
 }
 
 std::shared_ptr<RPCDigiComparisonAnalyserRunCache> RPCDigiComparisonAnalyser::globalBeginRun(edm::Run const & _run, edm::EventSetup const & _setup
-                                                                                             , GlobalCache const * _cache)
+                                                                                             , GlobalCache const * _global_cache)
 {
     // Get the list of groups and their rolls
     std::map<RPCMaskDetId, std::vector<RPCMaskDetId> > _group_rolls;
@@ -233,9 +247,9 @@ std::shared_ptr<RPCDigiComparisonAnalyserRunCache> RPCDigiComparisonAnalyser::gl
              ; _roll != _rolls.end() ; ++_roll) {
         RPCMaskDetId _maskid((*_roll)->id());
 
-        bool _keep(_cache->roll_selection_.empty());
-        for (std::vector<RPCMaskDetId>::const_iterator _mask = _cache->roll_selection_.begin()
-                 ; !_keep && _mask != _cache->roll_selection_.end() ; ++_mask) {
+        bool _keep(_global_cache->roll_selection_.empty());
+        for (std::vector<RPCMaskDetId>::const_iterator _mask = _global_cache->roll_selection_.begin()
+                 ; !_keep && _mask != _global_cache->roll_selection_.end() ; ++_mask) {
             _keep = _maskid.matches(*_mask);
         }
         if (!_keep) {
@@ -243,7 +257,7 @@ std::shared_ptr<RPCDigiComparisonAnalyserRunCache> RPCDigiComparisonAnalyser::gl
         }
 
         RPCMaskDetId _group(_maskid);
-        if (_cache->group_plots_) {
+        if (_global_cache->group_plots_) {
             _group.setSector().setSubSector().setSubSubSector().setRoll().setGap();
         }
         _group_rolls[_group].push_back(_maskid);
@@ -287,7 +301,7 @@ std::shared_ptr<RPCDigiComparisonAnalyserRunCache> RPCDigiComparisonAnalyser::gl
     // lumi sections axis
     std::pair<unsigned long long, unsigned long long> _lumirange(0, 10000);
     std::map<unsigned long long, std::pair<unsigned long long, unsigned long long> >::const_iterator _lumirange_it;
-    if ((_lumirange_it = _cache->run_lumirange_.find(_run.run())) != _cache->run_lumirange_.end()) {
+    if ((_lumirange_it = _global_cache->run_lumirange_.find(_run.run())) != _global_cache->run_lumirange_.end()) {
         _lumirange = _lumirange_it->second;
     }
     _run_cache->lumisec_axis_ = TAxis((_lumirange.second - _lumirange.first) + 1, -.5 + _lumirange.first, .5 + _lumirange.second);
@@ -314,7 +328,7 @@ void RPCDigiComparisonAnalyser::beginLuminosityBlock(edm::LuminosityBlock const 
     stream_data_.lumisec_processed_->Fill(_lumi.luminosityBlock());
 }
 
-void RPCDigiComparisonAnalyser::produce(edm::Event & _event, edm::EventSetup const & _setup)
+bool RPCDigiComparisonAnalyser::filter(edm::Event & _event, edm::EventSetup const & _setup)
 {
     edm::Handle<RPCDigiCollection> _lhs_digis_handle, _rhs_digis_handle;
     _event.getByToken(lhs_digis_token_, _lhs_digis_handle);
@@ -377,7 +391,7 @@ void RPCDigiComparisonAnalyser::produce(edm::Event & _event, edm::EventSetup con
                                                                       , associator::munkres_
                                                                       , globalCache()->distance_max_);
 
-    bool _report(false);
+    std::unique_ptr<bool> _report(new bool(false));
     for (associationvector<association_type>::const_iterator _association = _associations.begin()
              ; _association != _associations.end() ; ++_association) {
         RPCMaskDetId _id(_association.key_valid() ? _association.key()->first : _association.value()->first);
@@ -387,7 +401,7 @@ void RPCDigiComparisonAnalyser::produce(edm::Event & _event, edm::EventSetup con
         }
 
         if (_association.distance() > 0) {
-            _report = true;
+            *_report = true;
         }
 
         if (!_association.value_valid()) {
@@ -397,7 +411,7 @@ void RPCDigiComparisonAnalyser::produce(edm::Event & _event, edm::EventSetup con
                 stream_data_.group_roll_roll_count_->at(_group.getId())->Fill(.5 + _id.getId(), 0.);
                 stream_data_.group_lumisec_roll_lhsonly_->at(_group.getId())->Fill(_lumi, .5 + _id.getId());
             }
-            _report = true;
+            *_report = true;
         } else if (!_association.key_valid()) {
             stream_data_.group_strip_strip_count_->at(_group.getId())->Fill(0., _association.value()->second.strip());
             stream_data_.group_bx_bx_count_->at(_group.getId())->Fill(globalCache()->bx_min_ - 1, _association.value()->second.bx());
@@ -405,7 +419,7 @@ void RPCDigiComparisonAnalyser::produce(edm::Event & _event, edm::EventSetup con
                 stream_data_.group_roll_roll_count_->at(_group.getId())->Fill(0., .5 + _id.getId());
                 stream_data_.group_lumisec_roll_rhsonly_->at(_group.getId())->Fill(_lumi, .5 + _id.getId());
             }
-            _report = true;
+            *_report = true;
         } else {
             RPCMaskDetId _rhs(_association.value()->first);
             if (globalCache()->group_plots_) {
@@ -415,9 +429,14 @@ void RPCDigiComparisonAnalyser::produce(edm::Event & _event, edm::EventSetup con
             stream_data_.group_bx_bx_count_->at(_group.getId())->Fill(_association.key()->second.bx(), _association.value()->second.bx());
         }
     }
-    if (_report) {
+    if (*_report) {
         LogDebug("RPCDigiComparisonAnalyser") << "Report difference";
     }
+
+    bool _keep(!filter_ || *_report);
+    _event.put(std::move(_report), "Report");
+
+    return _keep;
 }
 
 void RPCDigiComparisonAnalyser::endRunSummary(edm::Run const & _run, edm::EventSetup const & _setup
@@ -435,11 +454,11 @@ void RPCDigiComparisonAnalyser::globalEndRunProduce(edm::Run & _run, edm::EventS
                                                     , RunContext const * _context
                                                     , RPCDigiComparisonAnalyserData const * _run_data)
 {
-    std::unique_ptr<MergeMap<::uint32_t, MergeTH2D> > _group_strip_strip_count(new MergeMap<::uint32_t, MergeTH2D>(_run_data->group_strip_strip_count_));
-    std::unique_ptr<MergeMap<::uint32_t, MergeTH2D> > _group_bx_bx_count(new MergeMap<::uint32_t, MergeTH2D>(_run_data->group_bx_bx_count_));
-    std::unique_ptr<MergeMap<::uint32_t, MergeTH2D> > _group_roll_roll_count(new MergeMap<::uint32_t, MergeTH2D>(_run_data->group_roll_roll_count_));
-    std::unique_ptr<MergeMap<::uint32_t, MergeTH2D> > _group_lumisec_roll_lhsonly(new MergeMap<::uint32_t, MergeTH2D>(_run_data->group_lumisec_roll_lhsonly_));
-    std::unique_ptr<MergeMap<::uint32_t, MergeTH2D> > _group_lumisec_roll_rhsonly(new MergeMap<::uint32_t, MergeTH2D>(_run_data->group_lumisec_roll_rhsonly_));
+    std::unique_ptr<MergeMap<std::uint32_t, MergeTH2D> > _group_strip_strip_count(new MergeMap<std::uint32_t, MergeTH2D>(_run_data->group_strip_strip_count_));
+    std::unique_ptr<MergeMap<std::uint32_t, MergeTH2D> > _group_bx_bx_count(new MergeMap<std::uint32_t, MergeTH2D>(_run_data->group_bx_bx_count_));
+    std::unique_ptr<MergeMap<std::uint32_t, MergeTH2D> > _group_roll_roll_count(new MergeMap<std::uint32_t, MergeTH2D>(_run_data->group_roll_roll_count_));
+    std::unique_ptr<MergeMap<std::uint32_t, MergeTH2D> > _group_lumisec_roll_lhsonly(new MergeMap<std::uint32_t, MergeTH2D>(_run_data->group_lumisec_roll_lhsonly_));
+    std::unique_ptr<MergeMap<std::uint32_t, MergeTH2D> > _group_lumisec_roll_rhsonly(new MergeMap<std::uint32_t, MergeTH2D>(_run_data->group_lumisec_roll_rhsonly_));
     std::unique_ptr<MergeTH1D> _lumisec_processed(new MergeTH1D(_run_data->lumisec_processed_));
 
     _run.put(std::move(_group_strip_strip_count), "GroupStripStripCount");

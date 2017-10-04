@@ -209,7 +209,7 @@ void RPCAMCLinkCountersPlotter::endJob()
         _canvas.ResetBit(kMustCleanup);
         _canvas.ResetBit(kCanDelete);
         _canvas.SetTicks(1, 1);
-        _canvas.SetLeftMargin(.2);
+        _canvas.SetLeftMargin(.25);
         _canvas.SetRightMargin(.15);
         // _canvas.SetBottomMargin(.15);
         if (set_logz_) {
@@ -229,7 +229,7 @@ void RPCAMCLinkCountersPlotter::endJob()
             _temp_th2d->SetMinimum(.9);
         }
         _temp_th2d->SetMaximum(_n_events);
-        _title.SetText(0.2, 0.91, _fed_type_count->GetTitle());
+        _title.SetText(0.25, 0.91, _fed_type_count->GetTitle());
         _title.Draw();
         _title_note.Draw();
         _canvas.Print(output_pdf_.c_str());
@@ -243,7 +243,7 @@ void RPCAMCLinkCountersPlotter::endJob()
         _canvas.ResetBit(kMustCleanup);
         _canvas.ResetBit(kCanDelete);
         _canvas.SetTicks(1, 1);
-        _canvas.SetLeftMargin(.2);
+        _canvas.SetLeftMargin(.25);
         _canvas.SetRightMargin(.15);
         // _canvas.SetBottomMargin(.15);
         if (set_logz_) {
@@ -263,7 +263,7 @@ void RPCAMCLinkCountersPlotter::endJob()
             _temp_th2d->SetMinimum(.9);
         }
         _temp_th2d->SetMaximum(_n_events);
-        _title.SetText(0.2, 0.91, _group->second->GetTitle());
+        _title.SetText(0.25, 0.91, _group->second->GetTitle());
         _title.Draw();
         _title_note.Draw();
         _canvas.Print(output_pdf_.c_str());
@@ -311,7 +311,7 @@ void RPCAMCLinkCountersPlotter::endJob()
         _canvas.ResetBit(kMustCleanup);
         _canvas.ResetBit(kCanDelete);
         _canvas.SetTicks(1, 1);
-        _canvas.SetLeftMargin(.2);
+        _canvas.SetLeftMargin(.15);
         _canvas.SetRightMargin(.15);
         // _canvas.SetBottomMargin(.15);
         if (set_logz_) {
@@ -331,7 +331,7 @@ void RPCAMCLinkCountersPlotter::endJob()
             _temp_th2d->SetMinimum(.9);
         }
         _temp_th2d->SetMaximum(_n_events);
-        _title.SetText(0.2, 0.91, _group->second->GetTitle());
+        _title.SetText(0.15, 0.91, _group->second->GetTitle());
         _title.Draw();
         _title_note.Draw();
         _canvas.Print(output_pdf_.c_str());

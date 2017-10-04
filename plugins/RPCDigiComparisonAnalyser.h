@@ -3,9 +3,9 @@
 
 #include <memory>
 #include <vector>
-#include <stdint.h>
+#include <cstdint>
 
-#include "FWCore/Framework/interface/stream/EDProducer.h"
+#include "FWCore/Framework/interface/stream/EDFilter.h"
 #include "FWCore/Utilities/interface/EDGetToken.h"
 
 #include "DataFormats/RPCDigi/interface/RPCDigiCollection.h"
@@ -27,19 +27,22 @@ class RPCDigiDistance {
 public:
     RPCDigiDistance(float _weight_strip  = .005
                     , float _weight_bx   = .1
-                    , float _weight_roll = 1. / RPCMaskDetId::mask_sector_);
+                    , float _weight_roll = 1. / RPCMaskDetId::mask_sector_
+                    , int _shift_bx = 0);
 
     float operator()(std::pair<RPCDetId, RPCDigi> const & _lhs, std::pair<RPCDetId, RPCDigi> const & _rhs) const;
 
     void setStripWeight(float _weight);
     void setBXWeight   (float _weight);
     void setRollWeight (float _weight);
+    void setBXShift    (int _shift);
 
 protected:
     // for the roll distance, RPCMaskDetId is used.
     // This way weight distance_max_./RPCMaskDetId::mask_sector_ will allow swaps within a (region-station-layer-ring)
     // and 1./RPCMaskDetId::mask_region_ allows any swap
     float weight_strip_, weight_bx_, weight_roll_;
+    int shift_bx_;
 };
 
 class RPCDigiComparisonAnalyserGlobalCache
@@ -72,7 +75,7 @@ public:
     void initialise(RPCDigiComparisonAnalyserGlobalCache const & _global_cache
                     , RPCDigiComparisonAnalyserRunCache const & _run_cache);
 
-    MergeMap<::uint32_t, MergeTH2D> group_strip_strip_count_
+    MergeMap<std::uint32_t, MergeTH2D> group_strip_strip_count_
         , group_bx_bx_count_
         , group_roll_roll_count_
         , group_lumisec_roll_lhsonly_
@@ -81,10 +84,10 @@ public:
 };
 
 class RPCDigiComparisonAnalyser
-    : public edm::stream::EDProducer<edm::GlobalCache<RPCDigiComparisonAnalyserGlobalCache>
-                                     , edm::RunCache<RPCDigiComparisonAnalyserRunCache>
-                                     , edm::RunSummaryCache<RPCDigiComparisonAnalyserData>
-                                     , edm::EndRunProducer>
+    : public edm::stream::EDFilter<edm::GlobalCache<RPCDigiComparisonAnalyserGlobalCache>
+                                   , edm::RunCache<RPCDigiComparisonAnalyserRunCache>
+                                   , edm::RunSummaryCache<RPCDigiComparisonAnalyserData>
+                                   , edm::EndRunProducer>
 {
 public:
     static std::unique_ptr<RPCDigiComparisonAnalyserGlobalCache> initializeGlobalCache(edm::ParameterSet const & _config);
@@ -93,12 +96,12 @@ public:
     static void fillDescriptions(edm::ConfigurationDescriptions & _descs);
 
     static std::shared_ptr<RPCDigiComparisonAnalyserRunCache> globalBeginRun(edm::Run const & _run, edm::EventSetup const & _setup
-                                                                             , GlobalCache const * _cache);
+                                                                             , GlobalCache const * _global_cache);
     static std::shared_ptr<RPCDigiComparisonAnalyserData> globalBeginRunSummary(edm::Run const & _run, edm::EventSetup const & _setup
                                                                                 , RunContext const * _context);
     void beginRun(edm::Run const & _run, edm::EventSetup const & _setup);
     void beginLuminosityBlock(edm::LuminosityBlock const & _lumi, edm::EventSetup const & _setup);
-    void produce(edm::Event & _event, edm::EventSetup const & _setup);
+    bool filter(edm::Event & _event, edm::EventSetup const & _setup);
     void endRunSummary(edm::Run const & _run, edm::EventSetup const & _setup
                        , RPCDigiComparisonAnalyserData * _run_data) const;
     static void globalEndRun(edm::Run const & iRun, edm::EventSetup const &, RunContext const *) {}
@@ -114,6 +117,7 @@ protected:
     edm::EDGetTokenT<RPCDigiCollection> lhs_digis_token_, rhs_digis_token_;
     // stream-specific histograms
     RPCDigiComparisonAnalyserData stream_data_;
+    bool filter_;
 };
 
 #endif // DPGAnalysis_RPC_RPCDigiComparisonAnalyser_h
