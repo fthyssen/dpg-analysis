@@ -42,7 +42,7 @@ process.load("Configuration.StandardSequences.FrontierConditions_GlobalTag_cff")
 process.GlobalTag.globaltag = "92X_dataRun2_Express_v7"
 
 # Drop all event content
-# process.load("DPGAnalysis.Tools.EventFilter_cfi")
+process.load("DPGAnalysis.Tools.EventFilter_cfi")
 
 # TwinMux
 process.load("EventFilter.RPCRawToDigi.RPCTwinMuxRawToDigi_sqlite_cff")
@@ -58,6 +58,9 @@ process.RPCTwinMuxLinkCountersAnalyser.Filter = cms.bool(False)
 
 # CPPF
 process.load("EventFilter.RPCRawToDigi.RPCCPPFRawToDigi_sqlite_cff")
+process.load("DPGAnalysis.RPC.RPCCPPFDigiOccupancyAnalyser_cfi")
+process.RPCCPPFDigiOccupancyAnalyser.selection = cms.vstring("RE-1/R2", "RE-2/R2", "RE-3/R2", "RE-3/R3", "RE-4/R2", "RE-4/R3"
+                                                             , "RE+1/R2", "RE+2/R2", "RE+3/R2", "RE+3/R3", "RE+4/R2", "RE+4/R3")
 
 # Link Counters
 process.load("DPGAnalysis.RPC.RPCAMCLinkCountersAnalyser_cff")
@@ -74,7 +77,7 @@ process.load("EventFilter.RPCRawToDigi.rpcUnpackingModule_cfi")
 # Compare CPPF RPCDigis
 process.load("DPGAnalysis.RPC.RPCDigiComparisonAnalyser_cff")
 process.RPCCPPFDigiComparisonAnalyser = process.RPCDigiComparisonAnalyser.clone()
-process.RPCCPPFDigiComparisonAnalyser.Filter = cms.bool(True)
+process.RPCCPPFDigiComparisonAnalyser.Filter = cms.bool(False)
 process.RPCCPPFDigiComparisonAnalyser.lhsDigiCollection = cms.InputTag("rpcUnpackingModule")
 process.RPCCPPFDigiComparisonAnalyser.lhsDigiCollectionName = cms.string("Legacy")
 process.RPCCPPFDigiComparisonAnalyser.rhsDigiCollection = cms.InputTag("RPCCPPFRawToDigi")
@@ -91,7 +94,7 @@ process.RPCCPPFDigiComparisonRollAnalyser.distanceRollWeight = cms.double(10.) #
 # Compare TwinMux RPCDigis
 process.load("DPGAnalysis.RPC.RPCDigiComparisonAnalyser_cff")
 process.RPCTwinMuxDigiComparisonAnalyser = process.RPCDigiComparisonAnalyser.clone()
-process.RPCTwinMuxDigiComparisonAnalyser.Filter = cms.bool(True)
+process.RPCTwinMuxDigiComparisonAnalyser.Filter = cms.bool(False)
 process.RPCTwinMuxDigiComparisonAnalyser.lhsDigiCollection = cms.InputTag("rpcUnpackingModule")
 process.RPCTwinMuxDigiComparisonAnalyser.lhsDigiCollectionName = cms.string("Legacy")
 process.RPCTwinMuxDigiComparisonAnalyser.rhsDigiCollection = cms.InputTag("RPCTwinMuxRawToDigi")
@@ -114,15 +117,16 @@ process.source = cms.Source("PoolSource"
                             # , "drop GlobalObjectMapRecord_*_*_*")
 )
 
-#process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(10000) )
-process.maxLuminosityBlocks = cms.untracked.PSet(input = cms.untracked.int32(10))
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(25000) )
+#process.maxLuminosityBlocks = cms.untracked.PSet(input = cms.untracked.int32(2))
 
 process.p = cms.Path( ( process.RPCCPPFRawToDigi + process.RPCTwinMuxRawToDigi + process.rpcUnpackingModule )
-                      * ( ( process.RPCCPPFLinkCountersAnalyser + process.RPCTwinMuxLinkCountersAnalyser )
+                      * ( process.RPCCPPFDigiOccupancyAnalyser
+                          + ( process.RPCCPPFLinkCountersAnalyser + process.RPCTwinMuxLinkCountersAnalyser )
                           + ( process.RPCCPPFDigiComparisonAnalyser + process.RPCCPPFDigiComparisonRollAnalyser )
                           + ( process.RPCTwinMuxDigiComparisonAnalyser + process.RPCTwinMuxDigiComparisonRollAnalyser )
                       )
-                      # * process.EventFilter # and throw event-data away
+                      * process.EventFilter # and throw event-data away
 )
 
 # Output

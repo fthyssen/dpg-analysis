@@ -32,6 +32,11 @@ process.load("Configuration.StandardSequences.FrontierConditions_GlobalTag_cff")
 # https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideFrontierConditions#Express_reconstruction_Global_Ta
 process.GlobalTag.globaltag = "92X_dataRun2_Express_v7"
 
+process.load("DPGAnalysis.RPC.RPCCPPFDigiOccupancyPlotter_cfi")
+process.RPCCPPFDigiOccupancyPlotter.createPDF = cms.bool(True)
+process.RPCCPPFDigiOccupancyPlotter.setLogz = cms.bool(True)
+process.RPCCPPFDigiOccupancyPlotter.useDivergingPalette = cms.bool(True)
+
 process.load("DPGAnalysis.RPC.RPCAMCLinkCountersPlotter_cfi")
 process.RPCAMCLinkCountersPlotter.createPDF = cms.bool(True)
 process.RPCAMCLinkCountersPlotter.setLogz = cms.bool(True)
@@ -76,7 +81,8 @@ process.source = cms.Source("PoolSource"
 
 process.TFileService = cms.Service("TFileService", fileName = cms.string("testRPCUnpackersPlotter.root") )
 
-process.p = cms.Path(process.RPCCPPFLinkCountersPlotter + process.RPCTwinMuxLinkCountersPlotter
+process.p = cms.Path(process.RPCCPPFDigiOccupancyPlotter
+                     + process.RPCCPPFLinkCountersPlotter + process.RPCTwinMuxLinkCountersPlotter
                      + process.RPCCPPFDigiComparisonPlotter + process.RPCCPPFDigiComparisonRollPlotter
                      + process.RPCTwinMuxDigiComparisonPlotter + process.RPCTwinMuxDigiComparisonRollPlotter
 )
